@@ -1,5 +1,40 @@
 import asyncio
-from typing import List, Dict
+import hashlib
+import json
+import math
+import os
+import re
+import unicodedata
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
+
+from dotenv import load_dotenv
+
+try:
+    from openai import AsyncOpenAI
+except ImportError:  # pragma: no cover
+    AsyncOpenAI = None
+
+
+@dataclass
+class Chunk:
+    chunk_id: str
+    title: str
+    text: str
+    norm_text: str
+    tokens: List[str]
+
+
+@dataclass
+class GoldenExample:
+    question: str
+    answer: str
+    context: str
+    norm_question: str
+    tokens: List[str]
+    linked_chunk_ids: List[str]
+
 
 
 class MainAgent:
@@ -54,4 +89,5 @@ if __name__ == "__main__":
         agent = MainAgent()
         resp = await agent.query("Bệnh tiểu đường là gì?")
         print(resp)
+
     asyncio.run(test())

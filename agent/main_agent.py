@@ -61,13 +61,26 @@ class MainAgent:
         
         # V2 optimizations
         if mode == "optimized":
-            self.top_k = 5  # More retrieval results
-            self.enable_llm = True  # Enable LLM for better responses
-            self.llm_timeout = 6.0  # Longer timeout for better quality
+            self.top_k = 6  # More retrieval results
+            self.enable_llm = True
+            self.llm_timeout = 8.0
+            self.temperature = 0.0 # Strict and professional
+        else:
+            self.top_k = 3
+            self.enable_llm = True
+            self.llm_timeout = 5.0
+            self.temperature = 0.4
+        
         self.model_name = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-
-        api_key = os.getenv("OPENAI_API_KEY", "").strip()
-        self.client = AsyncOpenAI(api_key=api_key) if api_key and AsyncOpenAI else None
+        openai_key = os.getenv("OPENAI_API_KEY", "").strip()
+        
+        # Initialize OpenAI
+        self.client = AsyncOpenAI(api_key=openai_key) if openai_key and AsyncOpenAI else None
+        
+        if self.client:
+            print(f"🚀 MainAgent: Using OpenAI ({self.model_name})")
+        else:
+            print("⚠️ MainAgent: No OpenAI API Key found. Running in extractive mode.")
 
         golden_path = ROOT_DIR / "data" / "golden_set.jsonl"
         self.golden_examples = self._load_golden_examples(golden_path)
@@ -120,12 +133,20 @@ class MainAgent:
             for rank, chunk_id in enumerate(example.expected_ids, start=1):
                 scores[chunk_id] = scores.get(chunk_id, 0.0) + (similarity * 2.0) / rank
 
-        ranked_ids = [
-            chunk_id
-            for chunk_id, _ in sorted(scores.items(), key=lambda item: item[1], reverse=True)
-            if chunk_id in self.vector_store.chunks
-        ][:top_k]
-        return ranked_ids, [self.vector_store.chunks[chunk_id] for chunk_id in ranked_ids]
+        # Reranking logic (Lexical + Vector)
+        ranked_items = []
+        for chunk_id, score in scores.items():
+            if chunk_id in self.vector_store.chunks:
+                # Optimized mode: Added stronger lexical weight for Reranking
+                if self.mode == "optimized":
+                    chunk_text = self.vector_store.chunks[chunk_id]
+                    keyword_matches = sum(1 for k in question_keywords if k in chunk_text.lower())
+                    score += keyword_matches * 2.5 
+                ranked_items.append((chunk_id, score))
+
+        ranked_items.sort(key=lambda x: x[1], reverse=True)
+        final_ids = [item[0] for item in ranked_items[:top_k]]
+        return final_ids, [self.vector_store.chunks[cid] for cid in final_ids]
 
     async def _generate_answer(self, question: str, contexts: List[str]) -> Tuple[str, str, int]:
         if not contexts:
@@ -134,7 +155,7 @@ class MainAgent:
         if self.enable_llm and self.client:
             try:
                 return await asyncio.wait_for(
-                    self._generate_with_llm(question, contexts),
+                    self._generate_with_llm_openai(question, contexts),
                     timeout=self.llm_timeout,
                 )
             except Exception:
@@ -142,29 +163,46 @@ class MainAgent:
 
         return self._generate_extractive(question, contexts)
 
-    async def _generate_with_llm(self, question: str, contexts: List[str]) -> Tuple[str, str, int]:
+    async def _generate_with_llm_openai(self, question: str, contexts: List[str]) -> Tuple[str, str, int]:
         context_block = "\n\n".join(f"[Context {i}]\n{ctx}" for i, ctx in enumerate(contexts, start=1))
         few_shot = "\n\n".join(
             f"Q: {example.question}\nA: {example.answer}"
             for _, example in self._similar_golden_examples(question, limit=2)
         )
 
-        system_prompt = (
-            "Ban la tro ly hoi dap dung RAG. "
-            "Chi tra loi dua tren context duoc cung cap. "
-            "Neu context chua du thi noi ro la chua du thong tin. "
-            "Tra loi ngan gon, dung trong tam, bang tieng Viet."
-        )
-        user_prompt = (
-            f"Cau hoi: {question}\n\n"
-            f"Context:\n{context_block}\n\n"
-            f"Vi du tham khao:\n{few_shot or 'Khong co'}\n\n"
-            "Hay tra loi truc tiep. Khong them thong tin ngoai context."
-        )
+        if self.mode == "optimized":
+            system_prompt = (
+                "Ban la Chuyen gia Y te cao cap. "
+                "Nhiem vu: Tra loi cau hoi dua mang tinh chuyen mon, chinh xac tuyet doi dua tren tai lieu. "
+                "Quy tac:\n"
+                "1. Chi dung thong tin tu 'Context'. Khong tu y them kien thuc ngoai.\n"
+                "2. Trich dan [Context X] khi dung thong tin tu do.\n"
+                "3. Neu context khong co thong tin, hay tra loi: 'Tai lieu hien tai chua cung cap thong tin nay'.\n"
+                "4. Luon su dung dau gach dong cho cac y chinh, in dam cac thuat ngu quan trong.\n"
+                "5. Tra loi bang tieng Viet trang trong."
+            )
+            user_prompt = (
+                f"--- CAU HOI ---\n{question}\n\n"
+                f"--- CONTEXT DUOC CUNG CAP ---\n{context_block}\n\n"
+                "Hay phan tich ky context va tra loi chi tiet, day du nhat co the."
+            )
+        else:
+            system_prompt = (
+                "Ban la tro ly hoi dap dung RAG. "
+                "Chi tra loi dua tren context duoc cung cap. "
+                "Neu context chua du thi noi ro la chua du thong tin. "
+                "Tra loi ngan gon, dung trong tam, bang tieng Viet."
+            )
+            user_prompt = (
+                f"Cau hoi: {question}\n\n"
+                f"Context:\n{context_block}\n\n"
+                f"Vi du tham khao:\n{few_shot or 'Khong co'}\n\n"
+                "Hay tra loi truc tiep. Khong them thong tin ngoai context."
+            )
 
         response = await self.client.chat.completions.create(
             model=self.model_name,
-            temperature=0.1,
+            temperature=0.0 if self.mode == "optimized" else 0.1,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
@@ -336,7 +374,6 @@ if __name__ == "__main__":
     async def test():
         agent = MainAgent(top_k=10, enable_llm = True)
         resp = await agent.query("BHYT là gì?")
-        # resp = await agent.query("Sau khi rua tay, can lam gi tiep theo khi gap vet thuong ho?")
         print(json.dumps(resp, ensure_ascii=False, indent=2))
 
     asyncio.run(test())

@@ -23,7 +23,7 @@ def chunk_text(text: str, source_file: str, chunk_size: int = 300, overlap: int 
         chunk_content = text[start:end]
         chunk_id = f"chunk_{uuid.uuid4().hex[:8]}"
         chunks.append({
-            "id": chunk_id, 
+            "id": chunk_id,
             "content": chunk_content,
             "source_file": source_file
         })
@@ -62,24 +62,24 @@ Văn bản:
             ],
             response_format={"type": "json_object"}
         )
-        
+
         data = json.loads(response.choices[0].message.content)
         qa_list = data.get("qa_pairs", [])
-        
+
         # Nếu LLM trả về format khác, cố gắng bóc tách
         if not qa_list and isinstance(data, dict):
             for val in data.values():
                 if isinstance(val, list):
                     qa_list = val
                     break
-        
+
         # Gán thêm metadata và ground truth
         results = []
         for qa in qa_list:
             # Linh hoạt với tên key
             q = qa.get("question") or qa.get("query")
             a = qa.get("expected_answer") or qa.get("answer")
-            
+
             if q and a:
                 results.append({
                     "question": q,
@@ -106,7 +106,7 @@ async def generate_hard_cases(category: str, count: int, chunks: List[Dict]) -> 
     import random
     context_chunks = random.sample(chunks, min(len(chunks), 3))
     context_text = "\n---\n".join([c['content'] for c in context_chunks])
-    
+
     prompt = f"""
 Bạn là chuyên gia thiết kế Test Case cho hệ thống RAG Y tế.
 Nhiệm vụ: Tạo ra {count} hard cases cho category: '{category}'.
@@ -151,7 +151,7 @@ JSON format yêu cầu:
         )
         data = json.loads(response.choices[0].message.content)
         cases = data.get("hard_cases", [])
-        
+
         # Bổ sung context và ID cho các case
         for case in cases:
             case["expected_retrieval_ids"] = [c["id"] for c in context_chunks] if category != "out_of_context" else []
@@ -160,7 +160,7 @@ JSON format yêu cầu:
                 case["metadata"] = {}
             case["metadata"]["difficulty"] = "hard"
             case["metadata"]["type"] = category
-            
+
         return cases
     except Exception as e:
         print(f"Error generating hard cases for {category}: {e}")
@@ -170,13 +170,13 @@ async def main():
     data_dir = "data"
     # Lấy danh sách tất cả các file .txt trong thư mục data
     source_files = [f for f in os.listdir(data_dir) if f.endswith(".txt")]
-    
+
     if not source_files:
         print(f"❌ Không tìm thấy file .txt nào trong thư mục {data_dir}.")
         return
 
     print(f"📂 Tìm thấy {len(source_files)} files nguồn: {source_files}")
-    
+
     all_chunks = []
     for filename in source_files:
         file_path = os.path.join(data_dir, filename)
@@ -189,9 +189,9 @@ async def main():
     print(f"📄 Tổng cộng: {len(all_chunks)} chunks.")
 
     all_qa_pairs = []
-    target_count = 200  # Tăng mục tiêu lên 200 vì có nhiều data hơn
+    target_count = 50
     print(f"🚀 Bắt đầu tạo QA pairs (Mục tiêu {target_count}+)...")
-    
+
     # Shuffle chunks để đảm bảo đa dạng nguồn khi lấy batch đầu tiên
     import random
     random.shuffle(all_chunks)
@@ -204,7 +204,7 @@ async def main():
         for res in results:
             all_qa_pairs.extend(res)
         print(f"⏳ Đã tạo được {len(all_qa_pairs)} cases...")
-        
+
         if len(all_qa_pairs) >= target_count:
             break
 
@@ -212,7 +212,7 @@ async def main():
     # GIAI ĐOẠN 2: TẠO HARD CASES (Theo HARD_CASES_GUIDE.md)
     # ---------------------------------------------------------
     print(f"\n🧠 Bắt đầu tạo Hard Cases theo Guide...")
-    
+
     hard_targets = {
         "adversarial_prompt": 5,
         "goal_hijacking": 5,
@@ -222,7 +222,7 @@ async def main():
         "multi_turn": 10,  # Kết hợp context & correction
         "technical_constraint": 6  # Latency & Cost
     }
-    
+
     for category, count in hard_targets.items():
         print(f"  - Đang tạo {count} cases cho '{category}'...")
         h_cases = await generate_hard_cases(category, count, all_chunks)
@@ -233,7 +233,7 @@ async def main():
     with open("data/golden_set.jsonl", "w", encoding="utf-8") as f:
         for pair in all_qa_pairs:
             f.write(json.dumps(pair, ensure_ascii=False) + "\n")
-    
+
     print(f"🎉 Hoàn thành! Đã lưu {len(all_qa_pairs)} cases vào data/golden_set.jsonl")
 
 if __name__ == "__main__":

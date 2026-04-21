@@ -10,10 +10,8 @@
 ## Công Việc Thực Hiện
 
 **Nhiệm vụ chính:**
-
-- Quản lý và xử lý dữ liệu nguồn từ `source_docs.txt`, thực hiện phân tách thành 214 chunks dữ liệu y tế.
 - Kiểm soát cấu trúc dữ liệu JSONL, đảm bảo tính nhất quán giữa `expected_answer` và `expected_retrieval_ids`.
-- Phối hợp với Team Lead để phân loại các Hard cases (Adversarial, Out-of-context).
+- Phan tich va tong hopo viet report.
 
 **Các tính năng chính:**
 
@@ -69,7 +67,7 @@
 **Technical Depth:**
 
 - **Data Diversity:** Đảm bảo bộ dữ liệu phủ đủ 6 nhóm bệnh lý chính trong tài liệu nguồn.
-- **Hard Case Design:** Thiết kế 20+ kịch bản "bẫy" AI (Out of context) để kiểm tra độ tin cậy của Agent V2.
+- **Hard Case Design:** Thiết kế kịch bản "bẫy" AI (Out of context) để kiểm tra độ tin cậy của Agent V2.
 - **Consistency Checks:** Thực hiện kiểm tra chéo giữa câu hỏi - câu trả lời và context để tránh sai sót logic.
 
 **Problem Solving:**

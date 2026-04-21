@@ -46,7 +46,14 @@ async def run_benchmark_with_results(agent_version: str):
     retrieval_eval = RetrievalEvaluator()
     retrieval_eval.build_store_from_dataset(dataset)
 
-    agent = MainAgent(vector_store=retrieval_eval.vector_store)
+    # Create different agents for V1 and V2
+    if "V1" in agent_version:
+        agent = MainAgent(vector_store=retrieval_eval.vector_store, mode="base")
+    elif "V2" in agent_version:
+        agent = MainAgent(vector_store=retrieval_eval.vector_store, mode="optimized")
+    else:
+        agent = MainAgent(vector_store=retrieval_eval.vector_store)
+    
     evaluator = ExpertEvaluator(retrieval_eval=retrieval_eval)
     judge = LLMJudge()
 

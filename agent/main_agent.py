@@ -51,12 +51,19 @@ class MainAgent:
         "mat": ["anh sang xanh", "20 20 20", "glaucoma"],
     }
 
-    def __init__(self, vector_store=None):
+    def __init__(self, vector_store=None, mode="base"):
         load_dotenv()
         self.name = "SupportAgent-RAG"
+        self.mode = mode  # "base" for V1, "optimized" for V2
         self.top_k = int(os.getenv("RAG_TOP_K", "3"))
         self.enable_llm = os.getenv("RAG_ENABLE_LLM", "0").lower() in {"1", "true", "yes"}
         self.llm_timeout = float(os.getenv("RAG_LLM_TIMEOUT_SEC", "4"))
+        
+        # V2 optimizations
+        if mode == "optimized":
+            self.top_k = 5  # More retrieval results
+            self.enable_llm = True  # Enable LLM for better responses
+            self.llm_timeout = 6.0  # Longer timeout for better quality
         self.model_name = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
         api_key = os.getenv("OPENAI_API_KEY", "").strip()

@@ -45,11 +45,15 @@ async def run_benchmark_with_results(agent_version: str):
     # Build shared vector store một lần dùng cho cả Agent và Evaluator
     retrieval_eval = RetrievalEvaluator()
     retrieval_eval.build_store_from_dataset(dataset)
-    agent = None
-    if agent_version == "Agent_V1_Base":
+
+    # Create different agents for V1 and V2
+    if "V1" in agent_version:
+        agent = MainAgent(vector_store=retrieval_eval.vector_store, mode="base")
+    elif "V2" in agent_version:
+        agent = MainAgent(vector_store=retrieval_eval.vector_store, mode="optimized")
+    else:
         agent = MainAgent(vector_store=retrieval_eval.vector_store)
-    elif agent_version == "Agent_V2_Optimized":
-        agent = MainAgent(top_k=10, enable_llm=True, vector_store=retrieval_eval.vector_store)
+    
     evaluator = ExpertEvaluator(retrieval_eval=retrieval_eval)
     judge = LLMJudge()
 

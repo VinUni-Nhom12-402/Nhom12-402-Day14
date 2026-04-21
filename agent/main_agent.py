@@ -334,7 +334,7 @@ class MainAgent:
 
 if __name__ == "__main__":
     async def test():
-        agent = MainAgent()
+        agent = MainAgent(top_k=10, enable_llm = True)
         resp = await agent.query("BHYT là gì?")
         # resp = await agent.query("Sau khi rua tay, can lam gi tiep theo khi gap vet thuong ho?")
         print(json.dumps(resp, ensure_ascii=False, indent=2))

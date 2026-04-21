@@ -3,16 +3,27 @@ import json
 import os
 import time
 from engine.runner import BenchmarkRunner, BenchmarkConfig
-from agent.main_agent import MainAgent
+from engine.retrieval_eval import RetrievalEvaluator
 from engine.llm_judge import LLMJudge
 
 
 class ExpertEvaluator:
+    """Đánh giá retrieval thực sự: Hit Rate + MRR tính theo từng case."""
+
+    def __init__(self, retrieval_eval: RetrievalEvaluator):
+        self.retrieval_eval = retrieval_eval
+
     async def score(self, case, resp):
+        expected_ids = case.get("expected_retrieval_ids", [])
+        retrieved_ids = resp.get("retrieved_ids", [])
+
+        hit_rate = self.retrieval_eval.calculate_hit_rate(expected_ids, retrieved_ids)
+        mrr = self.retrieval_eval.calculate_mrr(expected_ids, retrieved_ids)
+
         return {
             "faithfulness": 0.9,
             "relevancy": 0.8,
-            "retrieval": {"hit_rate": 1.0, "mrr": 0.5},
+            "retrieval": {"hit_rate": hit_rate, "mrr": mrr},
         }
 
 
@@ -30,6 +41,14 @@ async def run_benchmark_with_results(agent_version: str):
         print("File data/golden_set.jsonl rong. Hay tao it nhat 1 test case.")
         return None, None
 
+    # Build shared vector store một lần dùng cho cả Agent và Evaluator
+    retrieval_eval = RetrievalEvaluator()
+    retrieval_eval.build_store_from_dataset(dataset)
+
+    agent = MainAgent(vector_store=retrieval_eval.vector_store)
+    evaluator = ExpertEvaluator(retrieval_eval=retrieval_eval)
+    judge = MultiModelJudge()
+
     # Config cho benchmark
     config = BenchmarkConfig(
         batch_size=5,
@@ -39,7 +58,7 @@ async def run_benchmark_with_results(agent_version: str):
         max_concurrent_requests=10,
         enable_progress_tracking=True
     )
-    
+
     # Use async context manager for proper resource cleanup
     async with BenchmarkRunner(MainAgent(), ExpertEvaluator(), LLMJudge(), config) as runner:
         results = await runner.run_all(dataset)

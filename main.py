@@ -5,6 +5,7 @@ import time
 from engine.runner import BenchmarkRunner, BenchmarkConfig
 from engine.retrieval_eval import RetrievalEvaluator
 from engine.llm_judge import LLMJudge
+from agent.main_agent import MainAgent
 
 
 class ExpertEvaluator:
@@ -47,7 +48,7 @@ async def run_benchmark_with_results(agent_version: str):
 
     agent = MainAgent(vector_store=retrieval_eval.vector_store)
     evaluator = ExpertEvaluator(retrieval_eval=retrieval_eval)
-    judge = MultiModelJudge()
+    judge = LLMJudge()
 
     # Config cho benchmark
     config = BenchmarkConfig(
@@ -60,7 +61,7 @@ async def run_benchmark_with_results(agent_version: str):
     )
 
     # Use async context manager for proper resource cleanup
-    async with BenchmarkRunner(MainAgent(), ExpertEvaluator(), LLMJudge(), config) as runner:
+    async with BenchmarkRunner(agent, evaluator, judge, config) as runner:
         results = await runner.run_all(dataset)
         
         # Lấy thống kê chi tiết từ runner

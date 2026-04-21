@@ -54,14 +54,16 @@
 ## 4. Đóng Góp (Chi tiết theo Rubric)
 
 ### Engineering Contribution
-- **Multi-Source Support:** Phát triển mã nguồn xử lý 11 file y tế chuyên sâu, vượt xa quy mô ban đầu của dự án.
-- **Hard Case Engine:** Triển khai module tạo 51 hard cases theo chuẩn quốc tế (Adversarial, Multi-turn simulation), nâng cao đáng kể độ tin cậy của benchmark.
-- **System Performance:** Tối ưu hóa chu kỳ benchmark xuống còn 44 giây, giúp quy trình phát triển linh hoạt hơn.
+- **Tối ưu Async & Performance:** Phát triển module xử lý song song cho SDG, giúp xử lý 11 file y tế chuyên sâu với tốc độ cực nhanh, đáp ứng tiêu chuẩn hiệu năng của Lab.
+- **Metrics Module Integration:** Trực tiếp đóng góp vào việc thiết lập Ground Truth cho các chỉ số **Hit Rate** và **MRR**, đảm bảo tính chính xác của hệ thống đánh giá Retrieval.
+- **System Infrastructure:** Xây dựng tệp `.env.example` và quản lý dependencies, tạo nền tảng ổn định cho việc tích hợp các module Multi-Judge và Regression Testing của nhóm.
 
 ### Technical Depth
-- **Adversarial Testing Mastery:** Chứng minh khả năng thiết kế các kịch bản Prompt Injection và Goal Hijacking để kiểm thử tính an toàn của mô hình.
-- **Metrics Contextualization:** Giải trình được vì sao Hit Rate giảm khi thêm Hard Cases là một phần của quy trình kiểm soát chất lượng nghiêm ngặt.
-- **Data Integrity:** Đảm bảo 100% cases có Ground Truth IDs chuẩn xác kể cả khi dữ liệu đến từ nhiều tệp nguồn khác nhau.
+- **Giải thích các chỉ số Evaluation:**
+    - **MRR (Mean Reciprocal Rank):** Đo lường vị trí trung bình của tài liệu đúng đầu tiên trong danh sách kết quả. Điểm số này giúp đánh giá không chỉ hệ thống có tìm thấy tài liệu hay không (Hit Rate) mà còn tài liệu đó có nằm ở vị trí cao nhất hay không.
+    - **Cohen's Kappa:** Chỉ số đo lường độ đồng thuận (Agreement Rate) giữa các Judge trong hệ thống Multi-Judge, giúp loại bỏ yếu tố "đồng thuận ngẫu nhiên". Tôi đã áp dụng khái niệm này để xác định khi nào cần cơ chế xử lý xung đột.
+    - **Position Bias:** Hiểu rõ hiện tượng mô hình LLM Judge có xu hướng ưu tiên các câu trả lời ở vị trí đầu hoặc cuối. Tôi đã đề xuất xáo trộn thứ tự các câu trả lời khi đưa vào Judge để giảm thiểu sai số này.
+- **Trade-off giữa Chi phí và Chất lượng:** Chứng minh được việc sử dụng mô hình nhỏ (`gpt-4o-mini`) kết hợp với Prompt Engineering chặt chẽ và chọn lọc số lượng test case (111 cases) vẫn đạt độ tin cậy cao nều tối ưu được cấu trúc dữ liệu.
 
 ### Problem Solving
 - **Resource Management:** Giải quyết bài toán chi phí và thời gian bằng cách cấu hình batch size và target count tối ưu.

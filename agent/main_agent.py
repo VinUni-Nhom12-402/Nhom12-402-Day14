@@ -51,11 +51,11 @@ class MainAgent:
         "mat": ["anh sang xanh", "20 20 20", "glaucoma"],
     }
 
-    def __init__(self, vector_store=None):
+    def __init__(self, top_k = 3, enable_llm = False, vector_store=None):
         load_dotenv()
         self.name = "SupportAgent-RAG"
-        self.top_k = int(os.getenv("RAG_TOP_K", "3"))
-        self.enable_llm = os.getenv("RAG_ENABLE_LLM", "0").lower() in {"1", "true", "yes"}
+        self.top_k = top_k
+        self.enable_llm = enable_llm
         self.llm_timeout = float(os.getenv("RAG_LLM_TIMEOUT_SEC", "4"))
         self.model_name = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
@@ -327,7 +327,7 @@ class MainAgent:
 
 if __name__ == "__main__":
     async def test():
-        agent = MainAgent()
+        agent = MainAgent(top_k=10, enable_llm = True)
         resp = await agent.query("BHYT là gì?")
         # resp = await agent.query("Sau khi rua tay, can lam gi tiep theo khi gap vet thuong ho?")
         print(json.dumps(resp, ensure_ascii=False, indent=2))
